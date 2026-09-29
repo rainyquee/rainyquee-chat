@@ -368,32 +368,13 @@ async function checkCaps(){const{data}=await sb.from('capsules').select('id,send
 /* ---------- latar belakang ---------- */
 const BGS=[['','Bawaan'],['linear-gradient(160deg,#ffe3ec,#ffd1c1)','Pink'],['linear-gradient(160deg,#dff6ec,#c9ecf5)','Mint'],['linear-gradient(160deg,#ece3ff,#ffd9ee)','Lavender'],['linear-gradient(160deg,#2b1b3d,#0f1b3d)','Malam'],['linear-gradient(160deg,#ffb88c,#de6262)','Senja']];
 function applyBg(){const t=LS.g('kb_bgt','p'),v=LS.g('kb_bg','');list.style.background=t==='i'&&v?'linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.18)),center/cover url('+v+')':v||'';}
-async function saveBg(t,v){LS.s('kb_bgt',t);LS.s('kb_bg',v);applyBg();
- const at=new Date().toISOString();
- const{error}=await sb.from('settings').upsert({key:'wallpaper',value:{t,v},updated_at:at});
- if(error){toast('Latar tersimpan di HP ini saja, gagal sinkron ke akun lain');return}
- LS.s('kb_bgat',at)}
-function pullBg(row){if(!row||!row.value)return;const t=row.value.t,v=row.value.v;
- LS.s('kb_bgat',row.updated_at||'');
- if(LS.g('kb_bgt','p')===t&&LS.g('kb_bg','')===v)return;
- LS.s('kb_bgt',t);LS.s('kb_bg',v);applyBg()}
-async function syncBg(){try{const{data:h}=await sb.from('settings').select('updated_at').eq('key','wallpaper').maybeSingle();
- if(!h||h.updated_at===LS.g('kb_bgat',''))return;
- const{data}=await sb.from('settings').select('*').eq('key','wallpaper').maybeSingle();pullBg(data)}catch(e){}}
 function bgSheet(){const cur=LS.g('kb_bgt','p')==='p'?LS.g('kb_bg',''):'@';const o=D('opts');
- BGS.forEach(([v,n])=>{const b=D('sw'+(cur===v?' on':''));b.style.background=v||'var(--bg)';b.title=n;b.onclick=()=>{saveBg('p',v);bgSheet()};o.append(b)});
- sheet('🎨 Latar belakang',o,sbtn('🖼️ Pakai fotoku sendiri',()=>{const i=E('input');i.type='file';i.accept='image/*';i.onchange=async()=>{if(!i.files[0])return;try{const b=await shrink(i.files[0],800,'image/jpeg',.6);const r=new FileReader();r.onload=()=>{saveBg('i',r.result);bgSheet()};r.readAsDataURL(b)}catch(e){toast('Gagal memuat foto')}};i.click()}),E('p','','Latar berubah di kedua akun.'))}
+ BGS.forEach(([v,n])=>{const b=D('sw'+(cur===v?' on':''));b.style.background=v||'var(--bg)';b.title=n;b.onclick=()=>{LS.s('kb_bgt','p');LS.s('kb_bg',v);applyBg();bgSheet()};o.append(b)});
+ sheet('🎨 Latar belakang',o,sbtn('🖼️ Pakai fotoku sendiri',()=>{const i=E('input');i.type='file';i.accept='image/*';i.onchange=async()=>{if(!i.files[0])return;try{const b=await shrink(i.files[0],900,'image/jpeg',.7);const r=new FileReader();r.onload=()=>{LS.s('kb_bgt','i');LS.s('kb_bg',r.result);applyBg();bgSheet()};r.readAsDataURL(b)}catch(e){toast('Gagal memuat foto')}};i.click()}),E('p','','Latar hanya berubah di HP ini.'))}
 
 /* ---------- notifikasi & pin ---------- */
 const notifOn=()=>LS.g('kb_notif','0')==='1'&&window.Notification&&Notification.permission==='granted';
-function beepSynth(){try{const c=new (window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const t0=c.currentTime;[[1318.5,0],[1760,.14]].forEach(([f,d])=>{[[1,.09],[2,.025]].forEach(([m,v])=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f*m;g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(v,t0+d+.01);g.gain.exponentialRampToValueAtTime(.0001,t0+d+.7);o.connect(g);g.connect(c.destination);o.start(t0+d);o.stop(t0+d+.75)})});setTimeout(()=>c.close(),1300)}catch(e){}}
-/* suara notifikasi: file mp3 sejajar dengan index.html (ganti nama di sini kalau beda) */
-const NOTIF_SRC='notif.mp3';
-const notifAudio=new Audio(NOTIF_SRC);notifAudio.preload='auto';
-let notifPrimed=false;
-function primeNotif(){if(notifPrimed)return;notifPrimed=true;try{notifAudio.muted=true;const p=notifAudio.play();const done=()=>{notifAudio.pause();notifAudio.currentTime=0;notifAudio.muted=false};if(p&&p.then)p.then(done).catch(()=>{notifAudio.muted=false;notifPrimed=false});else done()}catch(e){notifAudio.muted=false}}
-['pointerdown','keydown','touchend'].forEach(ev=>document.addEventListener(ev,primeNotif,{passive:true}));
-function beep(){try{notifAudio.muted=false;notifAudio.currentTime=0;const p=notifAudio.play();if(p&&p.catch)p.catch(()=>beepSynth())}catch(e){beepSynth()}}
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const t0=c.currentTime;[[1318.5,0],[1760,.14]].forEach(([f,d])=>{[[1,.09],[2,.025]].forEach(([m,v])=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f*m;g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(v,t0+d+.01);g.gain.exponentialRampToValueAtTime(.0001,t0+d+.7);o.connect(g);g.connect(c.destination);o.start(t0+d);o.stop(t0+d+.75)})});setTimeout(()=>c.close(),1300)}catch(e){}}
 function notify(m){if(!document.hidden)return;unread++;document.title='('+unread+') Kita Berdua';
  if(!notifOn())return;const txt=m.deleted_at?'':(m.body||snip(m));
  try{new Notification(m.sender_name||'Kita Berdua',{body:txt,tag:'kb'})}catch(e){}
@@ -416,13 +397,13 @@ async function loadAll(){
  a.data.forEach(m=>{const o=msgs.get(m.id);msgs.set(m.id,{...m,status:'sent',_url:o?o._url:''});pend.delete(m.id)});
  if(!b.error){rx=new Map();b.data.forEach(r=>setRx(r.message_id,r.user_id,r.emoji))}
  if(c.data)cfg=c.data.value||{};if(d.data){moods={};d.data.forEach(x=>moods[x.user_id]=x)}
- syncBg();render();drawStrip();return true}
+ render();drawStrip();return true}
 let tyT;
 function subscribe(){if(chan)sb.removeChannel(chan);chanOk=false;
  chan=sb.channel('kb-room',{config:{broadcast:{self:false}}})
  .on('postgres_changes',{event:'*',schema:'public',table:'messages'},p=>{const m=p.new;if(!m||!m.id)return;const had=msgs.has(m.id);msgs.set(m.id,{...(msgs.get(m.id)||{}),...m,status:'sent'});pend.delete(m.id);render();if(p.eventType==='INSERT'&&m.sender!==me.id&&!had)notify(m)})
  .on('postgres_changes',{event:'*',schema:'public',table:'reactions'},p=>{if(p.eventType==='DELETE'){const o=p.old;if(o&&o.message_id)setRx(o.message_id,o.user_id,null)}else setRx(p.new.message_id,p.new.user_id,p.new.emoji);render()})
- .on('postgres_changes',{event:'*',schema:'public',table:'settings'},p=>{if(!p.new)return;if(p.new.key==='couple'){cfg=p.new.value||{};drawStrip()}else if(p.new.key==='wallpaper'){if(p.new.value)pullBg(p.new);else syncBg()}})
+ .on('postgres_changes',{event:'*',schema:'public',table:'settings'},p=>{if(p.new&&p.new.key==='couple'){cfg=p.new.value||{};drawStrip()}})
  .on('postgres_changes',{event:'*',schema:'public',table:'moods'},p=>{if(p.new&&p.new.user_id)moods[p.new.user_id]=p.new;else if(p.old&&p.old.user_id)delete moods[p.old.user_id];drawStrip()})
  .on('broadcast',{event:'typing'},({payload})=>{if(!payload||payload.uid===me.id)return;$('sub').textContent=nameOf(payload.uid)+' sedang mengetik…';clearTimeout(tyT);tyT=setTimeout(()=>$('sub').textContent=baseSub,3500)})
  .subscribe(st=>{if(st==='SUBSCRIBED'){chanOk=true;setSub('tersambung 💚');loadAll()}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){chanOk=false;setSub('terputus, menyambung ulang…')}})}
