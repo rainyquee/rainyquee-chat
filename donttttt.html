@@ -389,19 +389,11 @@ const notifOn=()=>LS.g('kb_notif','0')==='1'&&window.Notification&&Notification.
 function beepSynth(){try{const c=new (window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const t0=c.currentTime;[[1318.5,0],[1760,.14]].forEach(([f,d])=>{[[1,.09],[2,.025]].forEach(([m,v])=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f*m;g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(v,t0+d+.01);g.gain.exponentialRampToValueAtTime(.0001,t0+d+.7);o.connect(g);g.connect(c.destination);o.start(t0+d);o.stop(t0+d+.75)})});setTimeout(()=>c.close(),1300)}catch(e){}}
 /* suara notifikasi: file mp3 sejajar dengan index.html (ganti nama di sini kalau beda) */
 const NOTIF_SRC='notif.mp3';
-const AC=window.AudioContext||window.webkitAudioContext;
-let notifBuf=null,notifLoading=false;
-async function loadNotif(){if(notifBuf||notifLoading||!AC)return;notifLoading=true;
- try{const r=await fetch(NOTIF_SRC);if(!r.ok)throw 0;const ab=await r.arrayBuffer();const c=new AC();
-  notifBuf=await new Promise((ok,no)=>c.decodeAudioData(ab,ok,no));try{c.close()}catch(e){}}catch(e){notifBuf=null}
- notifLoading=false}
-loadNotif();
-['pointerdown','keydown','touchend'].forEach(ev=>document.addEventListener(ev,loadNotif,{passive:true}));
-function beep(){if(!notifBuf||!AC){beepSynth();return}
- try{const c=new AC();const cl=()=>{try{const q=c.close();q&&q.catch&&q.catch(()=>{})}catch(e){}};
-  if(c.state==='suspended')c.resume();
-  const s=c.createBufferSource();s.buffer=notifBuf;s.connect(c.destination);s.onended=cl;s.start(0);
-  setTimeout(cl,Math.ceil(notifBuf.duration*1000)+800)}catch(e){beepSynth()}}
+const notifAudio=new Audio(NOTIF_SRC);notifAudio.preload='auto';
+let notifPrimed=false;
+function primeNotif(){if(notifPrimed)return;notifPrimed=true;try{notifAudio.muted=true;const p=notifAudio.play();const done=()=>{notifAudio.pause();notifAudio.currentTime=0;notifAudio.muted=false};if(p&&p.then)p.then(done).catch(()=>{notifAudio.muted=false;notifPrimed=false});else done()}catch(e){notifAudio.muted=false}}
+['pointerdown','keydown','touchend'].forEach(ev=>document.addEventListener(ev,primeNotif,{passive:true}));
+function beep(){try{notifAudio.muted=false;notifAudio.currentTime=0;const p=notifAudio.play();if(p&&p.catch)p.catch(()=>beepSynth())}catch(e){beepSynth()}}
 function notify(m){if(!document.hidden)return;unread++;document.title='('+unread+') Kita Berdua';
  if(!notifOn())return;const txt=m.deleted_at?'':(m.body||snip(m));
  try{new Notification(m.sender_name||'Kita Berdua',{body:txt,tag:'kb'})}catch(e){}
