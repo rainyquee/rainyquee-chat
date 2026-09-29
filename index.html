@@ -115,7 +115,7 @@ const D=(c,x)=>E('div',c,x);
 const EMO=[["love","❤️","Sayang"],["kiss","😘","Cium"],["miss","🥺","Kangen"],["hug","🤗","Peluk"],["laugh","😂","Ngakak"],["sad","😭","Huhu"],["angry","😤","Kesel"],["sleep","😴","Ngantuk"],["eat","🍜","Laper"],["night","🌙","Met malam"],["morning","☀️","Pagi!"],["ok","👌","Oke"],["cute","🐻","Gemes"],["bunga","💐","Buat kamu"],["party","🎉","Yeay!"],["fire","🔥","Semangat"]];
 const SMAP=Object.fromEntries(EMO.map(s=>[s[0],s]));
 const uuid=()=>crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&3|8)).toString(16)});
-let tt;const toast=t=>{const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(tt);tt=setTimeout(()=>e.style.display='none',3000)};
+let tt;const toast=t=>{const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(tt);tt=setTimeout(()=>e.style.display='none',6000)};
 const LS={g:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:v}catch(e){return d}},s:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){toast('Penyimpanan HP penuh')}},r:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 
 /* ---------- PIN ---------- */
@@ -221,7 +221,7 @@ function node(m){
  if(rm&&rm.size&&!m.deleted_at){const g={};rm.forEach((e,u)=>{(g[e]=g[e]||[]).push(u)});const rr=D('rxs');
   Object.entries(g).forEach(([e,us])=>{const c=E('button','rx'+(us.includes(me.id)?' mine':''),e+(us.length>1?' '+us.length:''));c.onclick=ev=>{ev.stopPropagation();react(m.id,e)};rr.append(c)});row.append(rr)}
  const meta=D('meta');
- if(m.status==='failed'){meta.classList.add('fail');meta.textContent='Gagal terkirim · ketuk untuk kirim ulang';meta.onclick=()=>deliver(m.id)}
+ if(m.status==='failed'){meta.classList.add('fail');meta.textContent='Gagal: '+(m.err||'terkirim tidak berhasil')+' · ketuk untuk kirim ulang';meta.onclick=()=>deliver(m.id)}
  else if(m.status==='sending')meta.textContent='mengirim…';
  else meta.textContent=fmtT(m.created_at)+(m.edited_at&&!m.deleted_at?' · diedit':'')+(mine?' ✓':'');
  row.append(meta);lp(row,()=>msgSheet(m));return row}
@@ -240,16 +240,30 @@ function jump(id){const r=list.querySelector('[data-id="'+id+'"]');if(r){r.scrol
 function enqueue(o){const id=uuid();
  pend.set(id,{id,sender:me.id,sender_name:myName(),body:'',sticker:'',kind:'text',file_path:'',file_name:'',file_size:0,reply_to:replyTo?replyTo.id:null,created_at:new Date().toISOString(),status:'sending',_url:o.blob&&/^(image|video|audio)/.test(o.blob.type)?URL.createObjectURL(o.blob):'',...o});
  clearCtx();deliver(id)}
-async function deliver(id,att=0){const p=pend.get(id);if(!p)return;p.status='sending';render();
+const errMsg=(e,stage)=>{const raw=String((e&&(e.message||e.error_description||e.error))||e||''),m=raw.toLowerCase(),c=(e&&(e.code||e.statusCode))||'';let t;
+ if(/bucket not found|bucket.*(does not exist|not exist)/.test(m))t='bucket "chat-files" belum dibuat di Supabase Storage';
+ else if(/schema cache|could not find.*column|column .* does not exist/.test(m))t='kolom tabel messages belum ada ('+raw+')';
+ else if(/check constraint/.test(m))t='ditolak check constraint tabel messages ('+raw+')';
+ else if(/row-level security|policy|unauthori[sz]ed|forbidden/.test(m))t='ditolak RLS policy ('+(stage==='upload'?'storage':'tabel messages')+')';
+ else if(/mime|not supported|invalid.*type/.test(m))t='tipe file ditolak bucket';
+ else if(/too large|payload|exceed|maximum allowed/.test(m))t='file melebihi batas ukuran Supabase';
+ else if(/failed to fetch|network|timeout/.test(m))t='koneksi bermasalah';
+ else t=raw||'error tak dikenal';
+ return(stage==='upload'?'Upload file: ':'Simpan pesan: ')+t+(c?' ['+c+']':'')};
+async function deliver(id,att=0){const p=pend.get(id);if(!p)return;p.status='sending';p.err='';render();let stage='upload';
  try{
   if(p.blob&&!p.file_path){const path=me.id+'/'+id+'.'+(p.ext||'bin');
    const{error}=await sb.storage.from('chat-files').upload(path,p.blob,{contentType:p.ctype||p.blob.type||'application/octet-stream',upsert:false});
-   if(error&&!/exist|duplicate/i.test(error.message||''))throw error;p.file_path=path}
+   if(error&&!/already exists|duplicate/i.test(error.message||''))throw error;p.file_path=path}
+  stage='simpan';
   const row={id:p.id,sender:me.id,sender_name:p.sender_name,body:p.body,sticker:p.sticker,kind:p.kind,file_path:p.file_path,file_name:p.file_name,file_size:p.file_size,reply_to:p.reply_to};
   const{error}=await sb.from('messages').insert(row);if(error&&error.code!=='23505')throw error;
   msgs.set(id,{...row,created_at:p.created_at,status:'sent',_url:p._url});pend.delete(id);render();
- }catch(e){if(/jwt|expired/i.test((e&&e.message)||''))await sb.auth.refreshSession();
-  if(att<3){setTimeout(()=>deliver(id,att+1),700*(att+1)*(att+1));return}p.status='failed';render()}}
+ }catch(e){console.error('[kirim gagal]',stage,e);const msg=String((e&&e.message)||'');
+  if(/jwt|expired/i.test(msg))await sb.auth.refreshSession();
+  const transient=/jwt|expired|failed to fetch|network|timeout|50[234]/i.test(msg);
+  if(transient&&att<3){setTimeout(()=>deliver(id,att+1),700*(att+1)*(att+1));return}
+  p.err=errMsg(e,stage);p.status='failed';render();toast(p.err)}}
 function upd(){const has=inp.value.trim().length>0;$('send').classList.toggle('hide',!has);$('mic').classList.toggle('hide',has)}
 function fit(){inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,110)+'px'}
 function sendText(){const t=inp.value.trim();if(!t)return;
@@ -394,8 +408,9 @@ function subscribe(){if(chan)sb.removeChannel(chan);chanOk=false;
  .on('postgres_changes',{event:'*',schema:'public',table:'moods'},p=>{if(p.new&&p.new.user_id)moods[p.new.user_id]=p.new;else if(p.old&&p.old.user_id)delete moods[p.old.user_id];drawStrip()})
  .on('broadcast',{event:'typing'},({payload})=>{if(!payload||payload.uid===me.id)return;$('sub').textContent=nameOf(payload.uid)+' sedang mengetik…';clearTimeout(tyT);tyT=setTimeout(()=>$('sub').textContent=baseSub,3500)})
  .subscribe(st=>{if(st==='SUBSCRIBED'){chanOk=true;setSub('tersambung 💚');loadAll()}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){chanOk=false;setSub('terputus, menyambung ulang…')}})}
+async function checkStorage(){try{const{error}=await sb.storage.from('chat-files').list('',{limit:1});if(error)toast(errMsg(error,'upload'))}catch(e){}}
 async function enter(){$('login').classList.add('hide');$('app').classList.remove('hide');setSub('menyambungkan…');applyBg();
- await loadAll();subscribe();checkCaps();list.scrollTop=list.scrollHeight}
+ await loadAll();subscribe();checkCaps();checkStorage();list.scrollTop=list.scrollHeight}
 const retryFailed=()=>pend.forEach((p,k)=>{if(p.status==='failed')deliver(k)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){unread=0;document.title='Kita Berdua';if(me){loadAll();retryFailed();checkCaps()}}});
 window.addEventListener('online',()=>{$('banner').style.display='none';if(me){loadAll();subscribe();retryFailed()}});
