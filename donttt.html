@@ -370,11 +370,12 @@ const BGS=[['','Bawaan'],['linear-gradient(160deg,#ffe3ec,#ffd1c1)','Pink'],['li
 function applyBg(){const t=LS.g('kb_bgt','p'),v=LS.g('kb_bg','');list.style.background=t==='i'&&v?'linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.18)),center/cover url('+v+')':v||'';}
 function bgSheet(){const cur=LS.g('kb_bgt','p')==='p'?LS.g('kb_bg',''):'@';const o=D('opts');
  BGS.forEach(([v,n])=>{const b=D('sw'+(cur===v?' on':''));b.style.background=v||'var(--bg)';b.title=n;b.onclick=()=>{LS.s('kb_bgt','p');LS.s('kb_bg',v);applyBg();bgSheet()};o.append(b)});
- sheet('🎨 Latar belakang',o,sbtn('🖼️ Pakai fotoku sendiri',()=>{const i=E('input');i.type='file';i.accept='image/*';i.onchange=async()=>{if(!i.files[0])return;try{const b=await shrink(i.files[0],900,'image/jpeg',.7);const r=new FileReader();r.onload=()=>{LS.s('kb_bgt','i');LS.s('kb_bg',r.result);applyBg();bgSheet()};r.readAsDataURL(b)}catch(e){toast('Gagal memuat foto')}};i.click()}),E('p','','Latar hanya berubah di HP ini.'))}
+ sheet('🎨 Latar belakang',o,sbtn('🖼️ Pakai fotoku sendiri',()=>{const i=E('input');i.type='file';i.accept='image/*';i.onchange=async()=>{if(!i.files[0])return;try{const b=await shrink(i.files[0],900,'image/jpeg',.7);const r=new FileReader();r.onload=()=>{LS.s('kb_bgt','i');LS.s('kb_bg',r.result);applyBg();bgSheet()};r.readAsDataURL(b)}catch(e){toast('Gagal memuat foto')}};i.click()}),p0=E('p','','Latar hanya berubah di HP ini.'))}
+const p0=null;
 
 /* ---------- notifikasi & pin ---------- */
 const notifOn=()=>LS.g('kb_notif','0')==='1'&&window.Notification&&Notification.permission==='granted';
-function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const t0=c.currentTime;[[1318.5,0],[1760,.14]].forEach(([f,d])=>{[[1,.09],[2,.025]].forEach(([m,v])=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f*m;g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(v,t0+d+.01);g.gain.exponentialRampToValueAtTime(.0001,t0+d+.7);o.connect(g);g.connect(c.destination);o.start(t0+d);o.stop(t0+d+.75)})});setTimeout(()=>c.close(),1300)}catch(e){}}
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.15)}catch(e){}}
 function notify(m){if(!document.hidden)return;unread++;document.title='('+unread+') Kita Berdua';
  if(!notifOn())return;const txt=m.deleted_at?'':(m.body||snip(m));
  try{new Notification(m.sender_name||'Kita Berdua',{body:txt,tag:'kb'})}catch(e){}
