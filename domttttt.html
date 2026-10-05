@@ -43,7 +43,6 @@ audio{max-width:230px;height:38px;display:block}
 .rx{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:1px 7px;font-size:13px;cursor:pointer}.rx.mine{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 15%,var(--card))}
 .meta{font-size:10.5px;color:var(--mute);margin:2px 6px 6px}.meta.fail{color:#e53950;font-weight:600;cursor:pointer}
 .pend{opacity:.6}
-.tk{width:16px;height:11px;vertical-align:-1px;margin-left:2px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.tk.read{color:#2aa3f5}
 .empty{margin:auto;text-align:center;color:var(--mute);font-size:14px}.empty div{font-size:54px}
 #ctx{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--card);border-top:1px solid var(--line);font-size:13px}#ctx.on{display:flex}#ctx span{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border-left:3px solid var(--acc);padding-left:8px}
 #tray{display:none;background:var(--card);border-top:1px solid var(--line);padding:8px;max-height:40%;overflow-y:auto}#tray.on{display:block}
@@ -127,7 +126,7 @@ let pf=null,hiddenAt=0;
 function showLock(mode,len,cb,title){pf={mode,len,buf:'',first:null,cb};$('lock').classList.add('on');$('lt').textContent=title;$('lcancel').classList.toggle('hide',mode==='unlock');$('lforgot').classList.toggle('hide',mode!=='unlock');dots()}
 function dots(){$('ld').textContent='●'.repeat(pf.buf.length)+'○'.repeat(pf.len-pf.buf.length)}
 function shake(){$('ld').classList.remove('shake');void $('ld').offsetWidth;$('ld').classList.add('shake')}
-function unlockDone(){$('lock').classList.remove('on');pf=null;window.kbMark&&window.kbMark()}
+function unlockDone(){$('lock').classList.remove('on');pf=null}
 async function pkey(k){if(!pf)return;if(k==='del'){pf.buf=pf.buf.slice(0,-1);dots();return}
   if(pf.buf.length>=pf.len)return;pf.buf+=k;dots();if(pf.buf.length<pf.len)return;
   const v=pf.buf;pf.buf='';
@@ -203,24 +202,6 @@ function lp(el,fn){let t=null;const c=()=>{clearTimeout(t);t=null};
  el.addEventListener('pointerdown',e=>{if(e.target.closest('button,audio,video'))return;c();t=setTimeout(()=>{t=null;fn()},450)});
  ['pointerup','pointerleave','pointercancel','pointermove'].forEach(v=>el.addEventListener(v,c));
  el.addEventListener('contextmenu',e=>{e.preventDefault();fn()})}
-/* ---------- centang status pesan ---------- */
-function tick(m){const NS='http://www.w3.org/2000/svg',read=!!m.read_at,dlv=read||!!m.delivered_at;
- const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 18 12');s.setAttribute('class','tk'+(read?' read':''));
- s.setAttribute('aria-label',read?'Dibaca':dlv?'Terkirim ke HP lawan bicara':'Terkirim ke server');
- const add=d=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);s.append(p)};
- add('M1.5 6.5L5 10L11.5 2.5');if(dlv)add('M7 9.5L8 10L16.5 2.5');return s}
-let mrT=null,rcptBroken=false,rcptWarned=false;
-function markReceipts(){if(rcptBroken)return;clearTimeout(mrT);mrT=setTimeout(doMark,250)}
-window.kbMark=markReceipts;
-async function doMark(){if(!me||rcptBroken||$('app').classList.contains('hide'))return;
- const canRead=!document.hidden&&!$('lock').classList.contains('on');let needD=false,needR=false;
- msgs.forEach(m=>{if(m.sender===me.id||m.deleted_at)return;if(!m.delivered_at)needD=true;if(canRead&&!m.read_at)needR=true});
- if(!needD&&!needR)return;
- const now=new Date().toISOString();
- msgs.forEach(m=>{if(m.sender===me.id||m.deleted_at)return;if(!m.delivered_at)m.delivered_at=now;if(canRead&&!m.read_at)m.read_at=now});
- const{error}=await sb.rpc('mark_receipts',{p_read:canRead});
- if(error){console.error('[centang]',error);
-  if(/could not find|does not exist|schema cache|PGRST202|42883/i.test((error.message||'')+(error.code||''))){rcptBroken=true;if(!rcptWarned){rcptWarned=true;toast('Fitur centang belum aktif: jalankan file centang.sql di Supabase SQL Editor')}}}}
 function node(m){
  const mine=m.sender===me.id,row=D('row '+(mine?'me':'them')+(m.status==='sending'?' pend':''));row.dataset.id=m.id;let b;
  if(m.deleted_at)b=D('b del','🚫 Pesan ini dihapus');
@@ -242,8 +223,7 @@ function node(m){
  const meta=D('meta');
  if(m.status==='failed'){meta.classList.add('fail');meta.textContent='Gagal: '+(m.err||'terkirim tidak berhasil')+' · ketuk untuk kirim ulang';meta.onclick=()=>deliver(m.id)}
  else if(m.status==='sending')meta.textContent='mengirim…';
- else meta.textContent=fmtT(m.created_at)+(m.edited_at&&!m.deleted_at?' · diedit':'');
- if(mine&&!m.deleted_at)meta.append(tick(m));
+ else meta.textContent=fmtT(m.created_at)+(m.edited_at&&!m.deleted_at?' · diedit':'')+(mine?' ✓':'');
  row.append(meta);lp(row,()=>msgSheet(m));return row}
 function render(){
  const all=new Map(pend);msgs.forEach((v,k)=>all.set(k,v));
@@ -436,11 +416,11 @@ async function loadAll(){
  a.data.forEach(m=>{const o=msgs.get(m.id);msgs.set(m.id,{...m,status:'sent',_url:o?o._url:''});pend.delete(m.id)});
  if(!b.error){rx=new Map();b.data.forEach(r=>setRx(r.message_id,r.user_id,r.emoji))}
  if(c.data)cfg=c.data.value||{};if(d.data){moods={};d.data.forEach(x=>moods[x.user_id]=x)}
- syncBg();render();drawStrip();markReceipts();return true}
+ syncBg();render();drawStrip();return true}
 let tyT;
 function subscribe(){if(chan)sb.removeChannel(chan);chanOk=false;
  chan=sb.channel('kb-room',{config:{broadcast:{self:false}}})
- .on('postgres_changes',{event:'*',schema:'public',table:'messages'},p=>{const m=p.new;if(!m||!m.id)return;const had=msgs.has(m.id);msgs.set(m.id,{...(msgs.get(m.id)||{}),...m,status:'sent'});pend.delete(m.id);render();if(p.eventType==='INSERT'&&m.sender!==me.id&&!had){notify(m);markReceipts()}})
+ .on('postgres_changes',{event:'*',schema:'public',table:'messages'},p=>{const m=p.new;if(!m||!m.id)return;const had=msgs.has(m.id);msgs.set(m.id,{...(msgs.get(m.id)||{}),...m,status:'sent'});pend.delete(m.id);render();if(p.eventType==='INSERT'&&m.sender!==me.id&&!had)notify(m)})
  .on('postgres_changes',{event:'*',schema:'public',table:'reactions'},p=>{if(p.eventType==='DELETE'){const o=p.old;if(o&&o.message_id)setRx(o.message_id,o.user_id,null)}else setRx(p.new.message_id,p.new.user_id,p.new.emoji);render()})
  .on('postgres_changes',{event:'*',schema:'public',table:'settings'},p=>{if(!p.new)return;if(p.new.key==='couple'){cfg=p.new.value||{};drawStrip()}else if(p.new.key==='wallpaper'){if(p.new.value)pullBg(p.new);else syncBg()}})
  .on('postgres_changes',{event:'*',schema:'public',table:'moods'},p=>{if(p.new&&p.new.user_id)moods[p.new.user_id]=p.new;else if(p.old&&p.old.user_id)delete moods[p.old.user_id];drawStrip()})
@@ -450,8 +430,7 @@ async function checkStorage(){try{const{error}=await sb.storage.from('chat-files
 async function enter(){$('login').classList.add('hide');$('app').classList.remove('hide');setSub('menyambungkan…');applyBg();
  await loadAll();subscribe();checkCaps();checkStorage();list.scrollTop=list.scrollHeight}
 const retryFailed=()=>pend.forEach((p,k)=>{if(p.status==='failed')deliver(k)});
-window.addEventListener('focus',markReceipts);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){unread=0;markReceipts();document.title='Kita Berdua';if(me){loadAll();retryFailed();checkCaps()}}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){unread=0;document.title='Kita Berdua';if(me){loadAll();retryFailed();checkCaps()}}});
 window.addEventListener('online',()=>{$('banner').style.display='none';if(me){loadAll();subscribe();retryFailed()}});
 window.addEventListener('offline',()=>{$('banner').style.display='block'});
 if(navigator.onLine===false)$('banner').style.display='block';
