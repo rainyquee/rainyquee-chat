@@ -15,8 +15,8 @@ button{font:inherit;color:inherit}.hide{display:none!important}
 #app,#login,#setup{width:100%;max-width:560px;height:100%}
 #app{display:flex;flex-direction:column;background:var(--bg)}
 header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--line)}
-.av{overflow:hidden;cursor:pointer;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--me1),var(--me2));display:grid;place-items:center;font-size:21px;color:#fff;flex:none}
-.avi{width:100%;height:100%;object-fit:cover;display:block}.ti{cursor:pointer;flex:1;min-width:0}.pp{width:96px;height:96px;border-radius:50%;margin:0 auto 4px;font-size:46px}.ti b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ti small{color:var(--mute);font-size:12px}
+.av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--me1),var(--me2));display:grid;place-items:center;font-size:21px;color:#fff;flex:none}
+.ti{flex:1;min-width:0}.ti b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ti small{color:var(--mute);font-size:12px}
 .pill{border:0;background:linear-gradient(135deg,var(--me1),var(--me2));color:#fff;border-radius:20px;padding:9px 14px;font-weight:600;font-size:13px;cursor:pointer}
 .ghost{border:1px solid var(--line);background:var(--bg);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:16px;flex:none}
 #strip{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;background:var(--card);border-bottom:1px solid var(--line)}
@@ -96,8 +96,8 @@ const SUPABASE_ANON_KEY="sb_publishable_NEipGGI8N0NP859QDSKW9g_o9J2imNd";
 <button id="go" class="pill" type="button">Masuk</button><div id="err"></div></div></div>
 
 <div id="app" class="hide">
-<header><div class="av" id="hav">💕</div><div class="ti" id="hti"><b id="title">Kita Berdua</b><small id="sub">menyambungkan…</small></div>
-<button id="menu" class="ghost" type="button">⚙️</button></header>
+<header><div class="av">💕</div><div class="ti"><b id="title">Kita Berdua</b><small id="sub">menyambungkan…</small></div>
+<button id="kangen" class="pill" type="button">🥺</button><button id="menu" class="ghost" type="button">⚙️</button></header>
 <div id="strip"></div><div id="banner">Sedang offline. Pesan akan dikirim otomatis saat sinyal balik.</div>
 <div id="list"></div>
 <div id="ctx"><span id="ctxt"></span><button id="ctxx" class="ghost" type="button">✕</button></div>
@@ -144,13 +144,11 @@ if(SUPABASE_URL.startsWith("ISI_")||!window.supabase){document.body.textContent=
 
 function main(){
 const sb=window.sbc=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-let me=null,msgs=new Map(),pend=new Map(),rx=new Map(),moods={},cfg={},chan=null,chanOk=false,replyTo=null,editing=null,mode='in',unread=0,stk=[],trayTab='e',baseSub='',rec=null,pps={},nick='';
+let me=null,msgs=new Map(),pend=new Map(),rx=new Map(),moods={},cfg={},chan=null,chanOk=false,replyTo=null,editing=null,mode='in',unread=0,stk=[],trayTab='e',baseSub='',rec=null;
 const list=$('list'),inp=$('in');
 const myName=()=>(me&&me.user_metadata&&me.user_metadata.name)||'Aku';
-const otherId=()=>{for(const k in moods)if(k!==me.id)return k;for(const k in pps)if(k!==me.id)return k;for(const m of [...msgs.values()].reverse())if(m.sender!==me.id)return m.sender;return null};
-const nickKey=()=>'kb_nick_'+(me?me.id:'');
-const origName=u=>{const m=[...msgs.values()].reverse().find(x=>x.sender===u&&x.sender_name);return m?m.sender_name:'Dia'};
-const nameOf=u=>u===me.id?myName():(nick||origName(u));
+const otherId=()=>{for(const k in moods)if(k!==me.id)return k;for(const m of [...msgs.values()].reverse())if(m.sender!==me.id)return m.sender;return null};
+const nameOf=u=>{if(u===me.id)return myName();const m=[...msgs.values()].reverse().find(x=>x.sender===u&&x.sender_name);return m?m.sender_name:'Dia'};
 const fmtT=t=>new Date(t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}).replace('.',':');
 const fmtDT=t=>new Date(t).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const fmtD=t=>{const d=new Date(t),n=new Date(),y=new Date(Date.now()-864e5);if(d.toDateString()===n.toDateString())return'Hari ini';if(d.toDateString()===y.toDateString())return'Kemarin';return d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})};
@@ -248,7 +246,6 @@ function node(m){
  if(mine&&!m.deleted_at)meta.append(tick(m));
  row.append(meta);lp(row,()=>msgSheet(m));return row}
 function render(){
- drawHead();
  const all=new Map(pend);msgs.forEach((v,k)=>all.set(k,v));
  const arr=[...all.values()].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
  const near=list.scrollHeight-list.scrollTop-list.clientHeight<180,last=arr[arr.length-1];
@@ -256,7 +253,7 @@ function render(){
  if(!arr.length){const e=D('empty');e.append(D('','💌'),document.createTextNode('Belum ada pesan. Mulai duluan yuk!'));list.append(e);return}
  let ld='';arr.forEach(m=>{const dk=new Date(m.created_at).toDateString();if(dk!==ld){ld=dk;list.append(D('day',fmtD(m.created_at)))}list.append(node(m))});
  if(near||(last&&last.sender===me.id))list.scrollTop=list.scrollHeight;
- drawHead()}
+ const o=otherId();if(o)$('title').textContent=nameOf(o)}
 function jump(id){const r=list.querySelector('[data-id="'+id+'"]');if(r){r.scrollIntoView({block:'center',behavior:'smooth'});r.classList.add('flash');setTimeout(()=>r.classList.remove('flash'),1200)}}
 
 /* ---------- kirim ---------- */
@@ -300,6 +297,7 @@ $('send').onclick=()=>{sendText();inp.focus()};
 function setCtx(kind,m){if(kind==='r'){replyTo=m;editing=null;$('ctxt').textContent='Membalas '+nameOf(m.sender)+': '+snip(m)}else{editing=m;replyTo=null;inp.value=m.body;fit();upd();$('ctxt').textContent='Edit pesan'}$('ctx').classList.add('on');inp.focus()}
 function clearCtx(){if(editing){inp.value='';fit()}replyTo=null;editing=null;$('ctx').classList.remove('on');upd()}
 $('ctxx').onclick=clearCtx;
+$('kangen').onclick=()=>{enqueue({sticker:'miss'});for(let i=0;i<10;i++){const h=D('burst',['💗','🥺','💕','💞'][i%4]);h.style.left=(10+Math.random()*80)+'vw';h.style.bottom='8vh';h.style.animationDelay=(i*80)+'ms';document.body.append(h);setTimeout(()=>h.remove(),2200)}};
 
 /* ---------- file, foto, vn ---------- */
 $('att').onclick=()=>$('file').click();
@@ -336,25 +334,6 @@ $('stfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f
  try{const blob=await shrink(f,320,'image/png');const path=me.id+'/st-'+uuid()+'.png';
   const u=await sb.storage.from('chat-files').upload(path,blob,{contentType:'image/png'});if(u.error)throw u.error;
   const r=await sb.from('stickers').insert({path});if(r.error)throw r.error;await loadStk();drawTray();toast('Stiker ditambahkan 🎉')}catch(err){toast('Gagal menambah stiker')}};
-
-/* ---------- foto profil & nama kontak ---------- */
-function paint(el,u){el.textContent='';if(u&&pps[u]){const i=new Image();i.className='avi';i.src=pps[u];el.append(i)}else el.textContent='💕'}
-function drawHead(){const o=otherId();$('title').textContent=o?nameOf(o):'Kita Berdua';paint($('hav'),o)}
-function avatarData(file,size=192){return new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const q=Math.min(im.width,im.height),c=document.createElement('canvas');c.width=c.height=size;c.getContext('2d').drawImage(im,(im.width-q)/2,(im.height-q)/2,q,q,0,0,size,size);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.82))};im.onerror=rej;im.src=u})}
-async function savePP(img){const{error}=await sb.from('settings').upsert({key:'pp_'+me.id,value:{img},updated_at:new Date().toISOString()});
- if(error){toast('Gagal menyimpan foto profil');return false}if(img)pps[me.id]=img;else delete pps[me.id];drawHead();return true}
-function profileSheet(){const pv=D('av pp');pv.style.cursor='default';paint(pv,me.id);
- sheet('👤 Profil saya',pv,E('p','','Username: '+myName()),
-  sbtn('🖼️ Pilih foto profil',()=>{const i=E('input');i.type='file';i.accept='image/*';i.onchange=async()=>{if(!i.files[0])return;try{const d=await avatarData(i.files[0]);if(await savePP(d))profileSheet()}catch(e){toast('Gagal memuat foto')}};i.click()}),
-  pps[me.id]?sbtn('🗑️ Hapus foto',async()=>{if(await savePP(''))profileSheet()},'red'):E('span'),
-  E('p','','Fotomu terlihat oleh lawan bicara. Username-mu tidak berubah.'))}
-function contactSheet(){const o=otherId();if(!o)return toast('Kontak belum terdeteksi. Tunggu sampai dia daftar atau kirim pesan dulu.');
- const pv=D('av pp');pv.style.cursor='default';paint(pv,o);const f=field('Nama kontak (hanya terlihat olehmu)','text',nick,origName(o));f.i.maxLength=24;
- sheet('✏️ Nama kontak',pv,E('p','','Username aslinya: '+origName(o)),f.w,
-  sbtn('Simpan',async()=>{const v=f.i.value.trim();const{error}=await sb.from('settings').upsert({key:'nick_'+me.id,value:{name:v},updated_at:new Date().toISOString()});
-   nick=v;LS.s(nickKey(),v);drawHead();render();closeSheet();if(error)toast('Nama tersimpan di HP ini saja, gagal sinkron')},'on'),
-  nick?sbtn('Pakai username asli',async()=>{nick='';LS.s(nickKey(),'');await sb.from('settings').upsert({key:'nick_'+me.id,value:{name:''},updated_at:new Date().toISOString()});drawHead();render();closeSheet()},'red'):E('span'))}
-$('hav').onclick=$('hti').onclick=contactSheet;
 
 /* ---------- aksi pesan ---------- */
 const QUICK=['❤️','😂','😮','😢','👍','🔥'];
@@ -437,7 +416,7 @@ function primeNotif(){if(notifPrimed)return;notifPrimed=true;try{notifAudio.mute
 function beep(){try{notifAudio.muted=false;notifAudio.currentTime=0;const p=notifAudio.play();if(p&&p.catch)p.catch(()=>beepSynth())}catch(e){beepSynth()}}
 function notify(m){if(!document.hidden)return;unread++;document.title='('+unread+') Kita Berdua';
  if(!notifOn())return;const txt=m.deleted_at?'':(m.body||snip(m));
- try{new Notification(m.sender?nameOf(m.sender):(m.sender_name||'Kita Berdua'),{body:txt,tag:'kb'})}catch(e){}
+ try{new Notification(m.sender_name||'Kita Berdua',{body:txt,tag:'kb'})}catch(e){}
  try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(e){}beep()}
 async function toggleNotif(){if(notifOn()){LS.s('kb_notif','0');toast('Notifikasi dimatikan')}else{if(!window.Notification)return toast('Browser ini tidak mendukung notifikasi');
   const r=await Notification.requestPermission();if(r==='granted'){LS.s('kb_notif','1');toast('Notifikasi aktif 🔔')}else toast('Izin notifikasi ditolak. Aktifkan di pengaturan browser.')}menuSheet()}
@@ -447,17 +426,15 @@ function pinSheet(){const p=P();let len=p?p.len:4,delay=p?p.delay:30;const lo=D(
  const items=[E('label','','Panjang PIN'),lo,E('label','','Kunci lagi…'),dO,sbtn(p?'Ganti PIN':'Atur PIN',()=>{closeSheet();showLock('set',len,async v=>{LS.s('kb_pin',JSON.stringify({h:await hash(v),len,delay}));toast('PIN aktif 🔒')},'Buat PIN baru')},'on')];
  if(p)items.push(sbtn('Matikan PIN',()=>{LS.r('kb_pin');closeSheet();toast('PIN dimatikan')},'red'));
  items.push(E('p','','PIN hanya mengunci tampilan aplikasi di HP ini (tiap HP punya PIN sendiri).'));sheet('🔒 Kunci PIN',...items)}
-function menuSheet(){sheet('Pengaturan',sbtn('👤 Profil & foto saya',profileSheet),sbtn('✏️ Nama kontak',contactSheet),sbtn('🎨 Latar belakang',bgSheet),sbtn('🔒 Kunci PIN'+(P()?' (aktif)':''),pinSheet),sbtn('🔔 Notifikasi: '+(notifOn()?'aktif':'mati'),toggleNotif),sbtn('⏳ Kapsul waktu',capSheet),sbtn('⎋ Keluar akun',async()=>{if(confirm('Keluar dari akun?')){closeSheet();await sb.auth.signOut()}},'red'))}
+function menuSheet(){sheet('Pengaturan',sbtn('🎨 Latar belakang',bgSheet),sbtn('🔒 Kunci PIN'+(P()?' (aktif)':''),pinSheet),sbtn('🔔 Notifikasi: '+(notifOn()?'aktif':'mati'),toggleNotif),sbtn('⏳ Kapsul waktu',capSheet),sbtn('⎋ Keluar akun',async()=>{if(confirm('Keluar dari akun?')){closeSheet();await sb.auth.signOut()}},'red'))}
 $('menu').onclick=menuSheet;
 
 /* ---------- sinkron ---------- */
 async function loadAll(){
- const[a,b,c,d,pr,nk]=await Promise.all([sb.from('messages').select('*').order('created_at',{ascending:false}).limit(300),sb.from('reactions').select('*').limit(3000),sb.from('settings').select('*').eq('key','couple').maybeSingle(),sb.from('moods').select('*'),sb.from('settings').select('*').like('key','pp_%'),sb.from('settings').select('*').eq('key','nick_'+me.id).maybeSingle()]);
+ const[a,b,c,d]=await Promise.all([sb.from('messages').select('*').order('created_at',{ascending:false}).limit(300),sb.from('reactions').select('*').limit(3000),sb.from('settings').select('*').eq('key','couple').maybeSingle(),sb.from('moods').select('*')]);
  if(a.error){setSub('gagal memuat, mencoba lagi…');return false}
  a.data.forEach(m=>{const o=msgs.get(m.id);msgs.set(m.id,{...m,status:'sent',_url:o?o._url:''});pend.delete(m.id)});
  if(!b.error){rx=new Map();b.data.forEach(r=>setRx(r.message_id,r.user_id,r.emoji))}
- if(pr.data){pps={};pr.data.forEach(r=>{if(r.key.startsWith('pp_')&&r.value&&r.value.img)pps[r.key.slice(3)]=r.value.img})}
- if(nk.data&&nk.data.value){nick=nk.data.value.name||'';LS.s(nickKey(),nick)}else if(!nk.error)nick=LS.g(nickKey(),nick);
  if(c.data)cfg=c.data.value||{};if(d.data){moods={};d.data.forEach(x=>moods[x.user_id]=x)}
  syncBg();render();drawStrip();markReceipts();return true}
 let tyT;
@@ -465,12 +442,12 @@ function subscribe(){if(chan)sb.removeChannel(chan);chanOk=false;
  chan=sb.channel('kb-room',{config:{broadcast:{self:false}}})
  .on('postgres_changes',{event:'*',schema:'public',table:'messages'},p=>{const m=p.new;if(!m||!m.id)return;const had=msgs.has(m.id);msgs.set(m.id,{...(msgs.get(m.id)||{}),...m,status:'sent'});pend.delete(m.id);render();if(p.eventType==='INSERT'&&m.sender!==me.id&&!had){notify(m);markReceipts()}})
  .on('postgres_changes',{event:'*',schema:'public',table:'reactions'},p=>{if(p.eventType==='DELETE'){const o=p.old;if(o&&o.message_id)setRx(o.message_id,o.user_id,null)}else setRx(p.new.message_id,p.new.user_id,p.new.emoji);render()})
- .on('postgres_changes',{event:'*',schema:'public',table:'settings'},p=>{if(!p.new)return;if(p.new.key==='couple'){cfg=p.new.value||{};drawStrip()}else if(p.new.key==='wallpaper'){if(p.new.value)pullBg(p.new);else syncBg()}else if(p.new.key.startsWith('pp_')){const u=p.new.key.slice(3),im=p.new.value&&p.new.value.img;if(im)pps[u]=im;else delete pps[u];drawHead()}else if(p.new.key==='nick_'+me.id){nick=(p.new.value&&p.new.value.name)||'';LS.s(nickKey(),nick);drawHead();render()}})
+ .on('postgres_changes',{event:'*',schema:'public',table:'settings'},p=>{if(!p.new)return;if(p.new.key==='couple'){cfg=p.new.value||{};drawStrip()}else if(p.new.key==='wallpaper'){if(p.new.value)pullBg(p.new);else syncBg()}})
  .on('postgres_changes',{event:'*',schema:'public',table:'moods'},p=>{if(p.new&&p.new.user_id)moods[p.new.user_id]=p.new;else if(p.old&&p.old.user_id)delete moods[p.old.user_id];drawStrip()})
  .on('broadcast',{event:'typing'},({payload})=>{if(!payload||payload.uid===me.id)return;$('sub').textContent=nameOf(payload.uid)+' sedang mengetik…';clearTimeout(tyT);tyT=setTimeout(()=>$('sub').textContent=baseSub,3500)})
  .subscribe(st=>{if(st==='SUBSCRIBED'){chanOk=true;setSub('tersambung 💚');loadAll()}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){chanOk=false;setSub('terputus, menyambung ulang…')}})}
 async function checkStorage(){try{const{error}=await sb.storage.from('chat-files').list('',{limit:1});if(error)toast(errMsg(error,'upload'))}catch(e){}}
-async function enter(){nick=LS.g(nickKey(),'');$('login').classList.add('hide');$('app').classList.remove('hide');setSub('menyambungkan…');applyBg();
+async function enter(){$('login').classList.add('hide');$('app').classList.remove('hide');setSub('menyambungkan…');applyBg();
  await loadAll();subscribe();checkCaps();checkStorage();list.scrollTop=list.scrollHeight}
 const retryFailed=()=>pend.forEach((p,k)=>{if(p.status==='failed')deliver(k)});
 window.addEventListener('focus',markReceipts);
